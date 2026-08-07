@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-indigo-500 selection:text-white min-h-screen overflow-x-hidden;
+  }
+}
+
+/* Premium shadcn/ui components styling */
+.enterprise-card {
+  @apply bg-white border border-slate-200 rounded-lg shadow-sm transition-all duration-150;
+}
+
+.enterprise-card:hover {
+  @apply border-slate-300 shadow-md;
+}
+
+.enterprise-header {
+  @apply border-b border-slate-200 bg-white px-6 py-4;
+}
+
+.enterprise-table-header {
+  @apply text-slate-500 font-bold border-b border-slate-200 uppercase tracking-wider text-[10px] pb-3;
+}
+
+.enterprise-table-row {
+  @apply border-b border-slate-100 hover:bg-slate-50/50 transition-colors text-xs text-slate-700;
+}
+
+/* Scrollbar styles to match Linear */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
