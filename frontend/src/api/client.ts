@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1';
+export const getApiBaseUrl = (): string => {
+  const savedUrl = localStorage.getItem('mfgos_api_url');
+  if (savedUrl && savedUrl.trim().length > 0) {
+    return savedUrl.trim().replace(/\/+$/, '');
+  }
+  return (import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1').replace(/\/+$/, '');
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,8 +17,9 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor: injects active user JWT and Tenant ID
+// Request interceptor: injects active user JWT, Tenant ID, and dynamic baseURL
 api.interceptors.request.use((config) => {
+  config.baseURL = getApiBaseUrl();
   try {
     const userJson = localStorage.getItem('mfgos_user');
     if (userJson) {

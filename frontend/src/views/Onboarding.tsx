@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Building2, Mail, Lock, LogIn, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, Mail, Lock, LogIn, Loader2, Server, Settings, Check } from 'lucide-react';
 import { Button, Select, Card } from '../components/DesignSystem';
-import { api } from '../api/client';
+import { api, getApiBaseUrl } from '../api/client';
 
 interface OnboardingProps {
   onLoginSuccess: (user: any) => void;
@@ -10,6 +10,9 @@ interface OnboardingProps {
 export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showServerConfig, setShowServerConfig] = useState(false);
+  const [customServerUrl, setCustomServerUrl] = useState(getApiBaseUrl());
+  const [serverSavedMsg, setServerSavedMsg] = useState('');
   const [formData, setFormData] = useState({
     companyName: 'Apex Apparel & Textile Solutions',
     subdomain: 'apex-textiles',
@@ -19,6 +22,15 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
     adminFullName: 'Rajesh Kumar',
   });
   const [error, setError] = useState('');
+
+  const handleSaveServerUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customServerUrl.trim()) {
+      localStorage.setItem('mfgos_api_url', customServerUrl.trim());
+      setServerSavedMsg('Backend URL updated successfully!');
+      setTimeout(() => setServerSavedMsg(''), 3000);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -284,7 +296,47 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
             </button>
           </div>
         </div>
+
+        {/* Server Endpoint Settings */}
+        <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+          <button
+            onClick={() => setShowServerConfig(!showServerConfig)}
+            className="text-[11px] text-slate-400 hover:text-slate-700 flex items-center justify-center space-x-1.5 mx-auto transition"
+          >
+            <Server className="w-3.5 h-3.5" />
+            <span>Backend Server Endpoint: <code className="text-slate-600">{customServerUrl}</code></span>
+            <Settings className="w-3 h-3 text-slate-400" />
+          </button>
+
+          {showServerConfig && (
+            <form onSubmit={handleSaveServerUrl} className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-left">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                API Base URL (e.g. Render / Koyeb URL)
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={customServerUrl}
+                  onChange={(e) => setCustomServerUrl(e.target.value)}
+                  placeholder="https://your-backend.onrender.com/api/v1"
+                  className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none"
+                  required
+                />
+                <Button type="submit" variant="primary" className="px-3 py-1 text-xs">
+                  Save
+                </Button>
+              </div>
+              {serverSavedMsg && (
+                <p className="text-[11px] text-emerald-600 font-semibold mt-1.5 flex items-center space-x-1">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{serverSavedMsg}</span>
+                </p>
+              )}
+            </form>
+          )}
+        </div>
       </Card>
     </div>
   );
 }
+
