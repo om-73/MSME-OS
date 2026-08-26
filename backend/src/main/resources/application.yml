@@ -39,9 +39,18 @@ jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   expirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 hours
 
+aws:
+  s3:
+    endpoint: ${AWS_ENDPOINT_URL_S3:https://br-wild-mouse-ay4uil0a.storage.c-5.us-east-2.aws.neon.tech}
+    access-key: ${AWS_ACCESS_KEY_ID:nak_live_b107441c21b442bf95396813bb82cd53}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:nsk_live_1a9f296d539216bfcd9531c6586b9333d52c6ad84645177a6943b8be7af7317c}
+    region: ${AWS_REGION:us-east-2}
+    bucket: ${AWS_S3_BUCKET:msme-erp-storage}
+
 logging:
   level:
     root: INFO
     com.msme.erp: INFO
     org.springframework.security: WARN
+
 
