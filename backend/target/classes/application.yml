@@ -2,23 +2,38 @@ server:
   port: ${PORT:8081}
   servlet:
     context-path: /
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 4
+    max-connections: 100
 
 spring:
   application:
     name: manufacturing-erp-backend
+  main:
+    lazy-initialization: true
+  jmx:
+    enabled: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:Munna@74}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      idle-timeout: 30000
+      max-lifetime: 60000
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
 
 jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
@@ -27,5 +42,6 @@ jwt:
 logging:
   level:
     root: INFO
-    com.msme.erp: DEBUG
-    org.springframework.security: INFO
+    com.msme.erp: INFO
+    org.springframework.security: WARN
+
