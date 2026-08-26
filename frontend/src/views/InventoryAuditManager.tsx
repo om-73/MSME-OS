@@ -9,7 +9,7 @@ import {
   History, 
   User 
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../api/client';
 import { 
   Button, 
   Badge, 
@@ -41,48 +41,22 @@ export default function InventoryAuditManager({ audits, inventory, user, onRefre
   const handleStartAudit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:8085/api/v1/inventory/audit', {
+      const res = await api.post('/inventory/audit', {
         auditName: newAuditName
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
+      });
+      if (res.data) {
+        onAddAudit(res.data);
+        setSelectedAudit(res.data);
+        const counts: Record<string, number> = {};
+        if (res.data.items) {
+          res.data.items.forEach((item: any) => {
+            counts[item.inventoryItemId] = item.systemStock;
+          });
         }
-      });
-      onAddAudit(res.data);
-      setSelectedAudit(res.data);
-      // Initialize counts input map
-      const counts: Record<string, number> = {};
-      res.data.items.forEach((item: any) => {
-        counts[item.inventoryItemId] = item.systemStock;
-      });
-      setPhysicalCounts(counts);
+        setPhysicalCounts(counts);
+      }
     } catch (err) {
-      // Mock session
-      const mockAudit = {
-        id: (audits.length + 1).toString(),
-        auditName: newAuditName,
-        status: 'DRAFT',
-        createdBy: user.fullName,
-        createdAt: new Date().toISOString(),
-        items: inventory.map(item => ({
-          id: Math.random().toString(),
-          inventoryItemId: item.id,
-          inventoryItemName: item.name,
-          inventoryItemCode: item.code,
-          systemStock: item.currentStock,
-          physicalStock: item.currentStock,
-          variance: 0.0,
-          reconciled: false
-        }))
-      };
-      onAddAudit(mockAudit);
-      setSelectedAudit(mockAudit);
-      const counts: Record<string, number> = {};
-      mockAudit.items.forEach((item: any) => {
-        counts[item.inventoryItemId] = item.systemStock;
-      });
-      setPhysicalCounts(counts);
+      console.error('Failed to create audit in database:', err);
     }
 
     setShowStartAuditModal(false);
@@ -118,15 +92,11 @@ export default function InventoryAuditManager({ audits, inventory, user, onRefre
     if (!selectedAudit) return;
 
     try {
-      await axios.post(`http://localhost:8085/api/v1/inventory/audit/${selectedAudit.id}/submit`, physicalCounts, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
-      setStatusMsg('Physical counts logged successfully.');
+      await api.post(`/inventory/audit/${selectedAudit.id}/submit`, physicalCounts);
+      setStatusMsg('Physical counts logged successfully to database.');
     } catch (err) {
-      setStatusMsg('Physical counts logged to local draft.');
+      console.error('Failed to log physical counts:', err);
+      setStatusMsg('Failed to log physical counts.');
     }
 
     setTimeout(() => setStatusMsg(''), 3000);
@@ -137,12 +107,7 @@ export default function InventoryAuditManager({ audits, inventory, user, onRefre
     if (!selectedAudit) return;
 
     try {
-      await axios.post(`http://localhost:8085/api/v1/inventory/audit/${selectedAudit.id}/reconcile`, {}, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
+      await api.post(`/inventory/audit/${selectedAudit.id}/reconcile`, {});
       onUpdateAuditStatus(selectedAudit.id, 'COMPLETED', new Date().toISOString());
       setSelectedAudit((prev: any) => ({
         ...prev,
@@ -150,14 +115,9 @@ export default function InventoryAuditManager({ audits, inventory, user, onRefre
         completedAt: new Date().toISOString(),
         items: prev.items.map((it: any) => ({ ...it, reconciled: true }))
       }));
+      setStatusMsg('Inventory reconciled and ledgers aligned.');
     } catch (err) {
-      onUpdateAuditStatus(selectedAudit.id, 'COMPLETED', new Date().toISOString());
-      setSelectedAudit((prev: any) => ({
-        ...prev,
-        status: 'COMPLETED',
-        completedAt: new Date().toISOString(),
-        items: prev.items.map((it: any) => ({ ...it, reconciled: true }))
-      }));
+      console.error('Failed to reconcile audit:', err);
     }
     onRefresh();
   };

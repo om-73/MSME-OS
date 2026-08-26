@@ -25,7 +25,7 @@ import {
   CheckCircle,
   HelpCircle
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../api/client';
 
 const presetTemplates = {
   garment: {
@@ -190,17 +190,11 @@ export default function WorkflowBuilder() {
 
     try {
       setStatusMsg('Publishing blueprint to MfgOS core...');
-      await axios.post('http://localhost:8085/api/v1/workflows', workflowPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
+      await api.post('/workflows', workflowPayload);
       setStatusMsg('Workflow deployed successfully! Active in Production floor.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setStatusMsg('Published to local workspace successfully.');
+      setStatusMsg(err.response?.data?.message || 'Failed to publish workflow to database.');
     }
     setTimeout(() => setStatusMsg(''), 5000);
   };

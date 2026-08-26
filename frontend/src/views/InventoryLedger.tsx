@@ -9,7 +9,7 @@ import {
   QrCode, 
   User 
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../api/client';
 import { 
   Button, 
   Card, 
@@ -78,46 +78,24 @@ export default function InventoryLedger({ inventory, ledger, brands, user, onRef
     };
 
     try {
-      const res = await axios.post('http://localhost:8085/api/v1/inventory/receive', payload, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
-      onUpdateInventoryItem(res.data);
-      onAddMovement({
-        id: Math.random().toString(),
-        inventoryItemId: res.data.id,
-        inventoryItemName: res.data.name,
-        inventoryItemCode: res.data.code,
-        movementType: 'RECEIVE',
-        quantity: payload.currentStock,
-        toWarehouse: payload.warehouseName,
-        operatorName: user.fullName,
-        remarks: 'Goods Receipt Note (GRN) logged via Inventory Master',
-        timestamp: new Date().toISOString()
-      });
+      const res = await api.post('/inventory/receive', payload);
+      if (res.data) {
+        onUpdateInventoryItem(res.data);
+        onAddMovement({
+          id: Math.random().toString(),
+          inventoryItemId: res.data.id,
+          inventoryItemName: res.data.name,
+          inventoryItemCode: res.data.code,
+          movementType: 'RECEIVE',
+          quantity: payload.currentStock,
+          toWarehouse: payload.warehouseName,
+          operatorName: user.fullName,
+          remarks: 'Goods Receipt Note (GRN) logged via Inventory Master',
+          timestamp: new Date().toISOString()
+        });
+      }
     } catch (err) {
-      const mockNewItem = {
-        id: (inventory.length + 1).toString(),
-        ...payload,
-        availableStock: payload.currentStock,
-        reservedStock: 0.0,
-        isLowStock: false
-      };
-      onUpdateInventoryItem(mockNewItem);
-      onAddMovement({
-        id: Math.random().toString(),
-        inventoryItemId: mockNewItem.id,
-        inventoryItemName: mockNewItem.name,
-        inventoryItemCode: mockNewItem.code,
-        movementType: 'RECEIVE',
-        quantity: payload.currentStock,
-        toWarehouse: payload.warehouseName,
-        operatorName: user.fullName,
-        remarks: 'Goods Receipt Note (GRN) logged via Inventory Master (Mock)',
-        timestamp: new Date().toISOString()
-      });
+      console.error('Failed to receive inventory in database:', err);
     }
 
     setShowReceiveModal(false);
@@ -129,22 +107,17 @@ export default function InventoryLedger({ inventory, ledger, brands, user, onRef
     if (!selectedItemForIssue) return;
 
     try {
-      await axios.post('http://localhost:8085/api/v1/inventory/adjust', {
+      await api.post('/inventory/adjust', {
         itemId: selectedItemForIssue.id,
         quantity: issueQuantity,
         movementType: 'ISSUE',
         remarks: issueRemarks || `Issued for production order ${issueOrderId}`
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
 
       const updatedItem = {
         ...selectedItemForIssue,
         currentStock: Math.max(0, selectedItemForIssue.currentStock - issueQuantity),
-        availableStock: Math.max(0, selectedItemForIssue.availableStock - issueQuantity)
+        availableStock: Math.max(0, (selectedItemForIssue.availableStock || selectedItemForIssue.currentStock) - issueQuantity)
       };
       onUpdateInventoryItem(updatedItem);
       onAddMovement({
@@ -161,25 +134,7 @@ export default function InventoryLedger({ inventory, ledger, brands, user, onRef
         timestamp: new Date().toISOString()
       });
     } catch (err) {
-      const updatedItem = {
-        ...selectedItemForIssue,
-        currentStock: Math.max(0, selectedItemForIssue.currentStock - issueQuantity),
-        availableStock: Math.max(0, selectedItemForIssue.availableStock - issueQuantity)
-      };
-      onUpdateInventoryItem(updatedItem);
-      onAddMovement({
-        id: Math.random().toString(),
-        inventoryItemId: updatedItem.id,
-        inventoryItemName: updatedItem.name,
-        inventoryItemCode: updatedItem.code,
-        movementType: 'ISSUE',
-        quantity: issueQuantity,
-        fromWarehouse: updatedItem.warehouseName,
-        orderId: issueOrderId,
-        operatorName: user.fullName,
-        remarks: issueRemarks || `Issued for production order (Mock)`,
-        timestamp: new Date().toISOString()
-      });
+      console.error('Failed to issue inventory in database:', err);
     }
 
     setShowIssueModal(false);

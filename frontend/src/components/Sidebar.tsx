@@ -13,7 +13,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe,
-  Truck
+  Truck,
+  Warehouse,
+  BarChart3,
+  CreditCard,
+  ShieldCheck,
+  BrainCircuit,
+  Puzzle,
+  Lock,
+  Smartphone,
+  FileText,
+  Cpu,
+  HeartHandshake
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,15 +39,28 @@ export default function Sidebar({ currentTab, setCurrentTab, user, onLogout }: S
 
   const tabs = [
     { id: 'dashboard', name: 'Executive Dashboard', icon: LayoutDashboard, roles: ['ROLE_FACTORY_OWNER'] },
+    { id: 'client-portal', name: 'Client Portal & Success', icon: HeartHandshake, roles: ['ROLE_FACTORY_OWNER', 'ROLE_SUPER_ADMIN'] },
+    { id: 'machines-iot', name: 'Machines & IoT', icon: Cpu, roles: ['ROLE_FACTORY_OWNER', 'ROLE_SUPER_ADMIN'] },
+    { id: 'documents', name: 'Digital Records & Docs', icon: FileText, roles: ['ROLE_FACTORY_OWNER', 'ROLE_SUPER_ADMIN'] },
+    { id: 'mobile-app', name: 'Worker Task App (Mobile)', icon: Smartphone, roles: ['ROLE_FACTORY_OWNER', 'ROLE_SUPER_ADMIN'] },
+    { id: 'security', name: 'Identity & Security', icon: Lock, roles: ['ROLE_FACTORY_OWNER', 'ROLE_SUPER_ADMIN'] },
+    { id: 'integrations', name: 'Integration & APIs', icon: Puzzle, roles: ['ROLE_FACTORY_OWNER'] },
+    { id: 'ai-intelligence', name: 'AI Intelligence Center', icon: BrainCircuit, roles: ['ROLE_FACTORY_OWNER'] },
+    { id: 'tenant-billing', name: 'Billing & Subscription', icon: CreditCard, roles: ['ROLE_FACTORY_OWNER'] },
+    { id: 'saas-admin', name: 'SaaS Super Admin', icon: ShieldCheck, roles: ['ROLE_FACTORY_OWNER', 'ROLE_SUPER_ADMIN'] },
+    { id: 'analytics', name: 'Executive Analytics & BI', icon: BarChart3, roles: ['ROLE_FACTORY_OWNER'] },
     { id: 'builder', name: 'Workflow Designer', icon: GitFork, roles: ['ROLE_FACTORY_OWNER'] },
     { id: 'kanban', name: 'Production Control', icon: KanbanSquare, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR', 'ROLE_QUALITY_INSPECTOR'] },
     { id: 'worker-app', name: 'Worker Task App', icon: ClipboardCheck, roles: ['ROLE_OPERATOR', 'ROLE_QUALITY_INSPECTOR', 'ROLE_FACTORY_OWNER'] },
     { id: 'dispatch', name: 'Logistics Dispatch', icon: Truck, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR'] },
+    { id: 'procurement', name: 'Procurement Workspace', icon: LayoutDashboard, roles: ['ROLE_FACTORY_OWNER'] },
+    { id: 'warehouse', name: 'Warehouse Locations', icon: Warehouse, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR'] },
+    { id: 'brand-materials', name: 'Brand Materials Vault', icon: Building, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR', 'ROLE_BRAND_CLIENT'] },
     { id: 'inventory-dashboard', name: 'Inventory Analytics', icon: Boxes, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR'] },
     { id: 'inventory-ledger', name: 'Stock Master Ledger', icon: History, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR'] },
     { id: 'inventory-audit', name: 'Physical Stocktakes', icon: ClipboardCheck, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR'] },
     { id: 'brand', name: 'Client Portal', icon: Building, roles: ['ROLE_BRAND_CLIENT'] },
-    { id: 'notifications', name: 'Workspace Notifications', icon: Bell, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR', 'ROLE_QUALITY_INSPECTOR', 'ROLE_BRAND_CLIENT'] },
+    { id: 'notification-center', name: 'Notification Center', icon: Bell, roles: ['ROLE_FACTORY_OWNER', 'ROLE_OPERATOR', 'ROLE_QUALITY_INSPECTOR', 'ROLE_BRAND_CLIENT'] },
   ];
 
   const visibleTabs = tabs.filter(tab => tab.roles.includes(user.role));
@@ -55,7 +79,7 @@ export default function Sidebar({ currentTab, setCurrentTab, user, onLogout }: S
     <div className={`bg-white border-r border-slate-200 flex flex-col justify-between h-screen sticky top-0 transition-all duration-150 shrink-0 ${
       isCollapsed ? 'w-16' : 'w-64'
     }`}>
-      <div>
+      <div className="flex-1 overflow-y-auto min-h-0">
         {/* Brand header */}
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center space-x-3 overflow-hidden">

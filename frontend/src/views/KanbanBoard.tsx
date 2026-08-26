@@ -5,7 +5,7 @@ import {
   Plus, 
   FileText 
 } from 'lucide-react';
-import axiosObj from 'axios';
+import { api } from '../api/client';
 import { Button, Badge, Input, Select, Dialog } from '../components/DesignSystem';
 
 interface KanbanBoardProps {
@@ -66,17 +66,12 @@ export default function KanbanBoard({ orders, stages, user, onRefresh, onAddOrde
     }
 
     try {
-      await axiosObj.post(`http://localhost:8085/api/v1/orders/${orderId}/transition`, {
+      await api.post(`/orders/${orderId}/transition`, {
         targetStageId,
         notes: `Moved stage to ${targetStage.name} by floor operator.`
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
     } catch (err) {
-      console.warn(err);
+      console.warn('Transition error:', err);
     }
     onRefresh();
   };
@@ -85,7 +80,7 @@ export default function KanbanBoard({ orders, stages, user, onRefresh, onAddOrde
     if (!selectedOrderForQc || !selectedTargetStageId) return;
 
     try {
-      await axiosObj.post('http://localhost:8085/api/v1/orders/qc-outcome', {
+      await api.post('/orders/qc-outcome', {
         orderId: selectedOrderForQc.id,
         stageId: selectedTargetStageId,
         passed: qcPassed,
@@ -93,24 +88,14 @@ export default function KanbanBoard({ orders, stages, user, onRefresh, onAddOrde
         sampleSize: 100,
         defectCount: qcPassed ? 0 : defectCount,
         remarks: qcRemarks
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
 
-      await axiosObj.post(`http://localhost:8085/api/v1/orders/${selectedOrderForQc.id}/transition`, {
+      await api.post(`/orders/${selectedOrderForQc.id}/transition`, {
         targetStageId: selectedTargetStageId,
         notes: qcPassed ? 'QC Passed' : `QC Failed: ${defectType}`
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
     } catch (err) {
-      console.warn(err);
+      console.warn('QC submission error:', err);
     }
 
     setShowQcModal(false);
@@ -121,31 +106,15 @@ export default function KanbanBoard({ orders, stages, user, onRefresh, onAddOrde
 
   const createNewOrder = async () => {
     try {
-      const res = await axiosObj.post('http://localhost:8085/api/v1/orders', newOrder, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
-      onAddOrder(res.data);
+      const res = await api.post('/orders', newOrder);
+      if (res.data) {
+        onAddOrder(res.data);
+      }
     } catch (err) {
-      onAddOrder({
-        id: (orders.length + 1).toString(),
-        orderNumber: `ORD-2026-${100 + orders.length}`,
-        brandId: newOrder.brandId,
-        brandName: newOrder.brandId === 'nike-brand' ? 'Nike MSME Partner' : 'Zara Global Sourcing',
-        productName: newOrder.productName,
-        quantity: newOrder.quantity,
-        priority: newOrder.priority,
-        status: 'IN_PROGRESS',
-        currentStageId: stages[0]?.id,
-        currentStageName: stages[0]?.name || 'Order Received',
-        totalContractValue: newOrder.totalContractValue,
-        historyLogs: [],
-        qcRecords: []
-      });
+      console.error('Failed to create order in database:', err);
     }
     setShowAddOrder(false);
+    onRefresh();
   };
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Building2, Mail, Lock, LogIn } from 'lucide-react';
-import { Button, Input, Select, Badge, Card } from '../components/DesignSystem';
+import { Building2, Mail, Lock, LogIn, Loader2 } from 'lucide-react';
+import { Button, Select, Card } from '../components/DesignSystem';
+import { api } from '../api/client';
 
 interface OnboardingProps {
   onLoginSuccess: (user: any) => void;
@@ -8,6 +9,7 @@ interface OnboardingProps {
 
 export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
   const [isRegister, setIsRegister] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     companyName: 'Apex Apparel & Textile Solutions',
     subdomain: 'apex-textiles',
@@ -25,49 +27,89 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
     });
   };
 
-  const handleDemoLogin = (role: string) => {
+  const handleDemoLogin = async (role: string) => {
+    setError('');
+    setLoading(true);
+
     let email = 'owner@apex.com';
-    let fullName = 'Rajesh Kumar';
-    let brandId = undefined;
+    let password = 'password123';
 
     if (role === 'ROLE_OPERATOR') {
       email = 'operator@apex.com';
-      fullName = 'Ramesh Sharma';
     } else if (role === 'ROLE_QUALITY_INSPECTOR') {
       email = 'qc@apex.com';
-      fullName = 'Priya Verma';
     } else if (role === 'ROLE_BRAND_CLIENT') {
-      email = 'brand@nike.com';
-      fullName = 'Sarah Jenkins (Nike Client)';
-      brandId = 'nike-brand';
+      email = 'owner@apex.com'; // Owner with brand portal capability
     }
 
-    onLoginSuccess({
-      email,
-      fullName,
-      role,
-      tenantId: 'apex-textiles-id',
-      tenantName: 'Apex Apparel & Textile Solutions',
-      brandId,
-      token: 'mock-jwt-token'
-    });
+    try {
+      const response = await api.post('/auth/login', {
+        email,
+        password
+      });
+
+      const userData = {
+        ...response.data,
+        token: response.data.token,
+        tenantId: response.data.tenantId,
+        role: role === 'ROLE_BRAND_CLIENT' ? 'ROLE_BRAND_CLIENT' : response.data.role,
+        brandId: role === 'ROLE_BRAND_CLIENT' ? 'nike-brand' : response.data.brandId
+      };
+
+      localStorage.setItem('mfgos_user', JSON.stringify(userData));
+      onLoginSuccess(userData);
+    } catch (err: any) {
+      console.error('Database login error:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to authenticate with database';
+      setError(`Authentication error: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
     if (!formData.adminEmail || !formData.adminPassword) {
       setError('Please fill all required credentials');
       return;
     }
 
-    onLoginSuccess({
-      email: formData.adminEmail,
-      fullName: formData.adminFullName,
-      role: 'ROLE_FACTORY_OWNER',
-      tenantId: formData.subdomain + '-id',
-      tenantName: formData.companyName,
-      token: 'mock-jwt-token'
-    });
+    setLoading(true);
+    try {
+      let response;
+      if (isRegister) {
+        response = await api.post('/auth/register-tenant', {
+          companyName: formData.companyName,
+          subdomain: formData.subdomain,
+          industry: formData.industry,
+          adminEmail: formData.adminEmail,
+          adminPassword: formData.adminPassword,
+          adminFullName: formData.adminFullName
+        });
+      } else {
+        response = await api.post('/auth/login', {
+          email: formData.adminEmail,
+          password: formData.adminPassword
+        });
+      }
+
+      const userData = {
+        ...response.data,
+        token: response.data.token,
+        tenantId: response.data.tenantId
+      };
+
+      localStorage.setItem('mfgos_user', JSON.stringify(userData));
+      onLoginSuccess(userData);
+    } catch (err: any) {
+      console.error('Database auth error:', err);
+      const msg = err.response?.data?.message || err.message || 'Database connection error';
+      setError(`Database Error: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,7 +120,7 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
             M
           </div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">MfgOS Workspace</h2>
-          <p className="text-xs text-slate-500 mt-1">Multi-Tenant Manufacturing Operating System</p>
+          <p className="text-xs text-slate-500 mt-1">Multi-Tenant PostgreSQL Connected Platform</p>
         </div>
 
         {error && (
@@ -101,6 +143,7 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
                     onChange={handleInputChange}
                     className="w-full pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none"
                     placeholder="Enter company name"
+                    required
                   />
                 </div>
               </div>
@@ -115,6 +158,7 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
                     onChange={handleInputChange}
                     className="w-full pl-4 pr-32 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none"
                     placeholder="workspace-handle"
+                    required
                   />
                   <span className="absolute right-3 text-xs text-indigo-600 font-bold">.mfgos.com</span>
                 </div>
@@ -134,6 +178,19 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
                   <option value="Plastic">Plastic Molding</option>
                   <option value="Engineering">Precision Engineering</option>
                 </Select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Admin Full Name</label>
+                <input
+                  type="text"
+                  name="adminFullName"
+                  value={formData.adminFullName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none"
+                  placeholder="Full Name"
+                  required
+                />
               </div>
             </>
           )}
@@ -170,9 +227,15 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
             </div>
           </div>
 
-          <Button type="submit" variant="primary" className="w-full py-2 flex items-center justify-center space-x-1.5">
-            <LogIn className="w-4 h-4" />
-            <span>{isRegister ? 'Register Account' : 'Sign In'}</span>
+          <Button type="submit" variant="primary" disabled={loading} className="w-full py-2 flex items-center justify-center space-x-1.5">
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <LogIn className="w-4 h-4" />
+                <span>{isRegister ? 'Register & Initialize Database' : 'Sign In to Workspace'}</span>
+              </>
+            )}
           </Button>
         </form>
 
@@ -185,33 +248,37 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
           </button>
         </div>
 
-        {/* Corporate Quick Switcher */}
+        {/* Database Quick Authenticator */}
         <div className="mt-8 pt-6 border-t border-slate-200 text-xs">
           <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-3 text-center">
-            Demo Sandbox Logins
+            Database Seeded Accounts
           </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleDemoLogin('ROLE_FACTORY_OWNER')}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700"
+              disabled={loading}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700 disabled:opacity-50"
             >
               Factory Owner
             </button>
             <button
               onClick={() => handleDemoLogin('ROLE_OPERATOR')}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700"
+              disabled={loading}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700 disabled:opacity-50"
             >
               Floor Operator
             </button>
             <button
               onClick={() => handleDemoLogin('ROLE_QUALITY_INSPECTOR')}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700"
+              disabled={loading}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700 disabled:opacity-50"
             >
               QC Lead Inspector
             </button>
             <button
               onClick={() => handleDemoLogin('ROLE_BRAND_CLIENT')}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700"
+              disabled={loading}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg transition text-[11px] font-semibold text-slate-700 disabled:opacity-50"
             >
               Nike Brand Portal
             </button>

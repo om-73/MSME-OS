@@ -12,7 +12,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../api/client';
 import { Button, Card, Badge, Dialog, Input, Select } from '../components/DesignSystem';
 
 interface WorkerAppProps {
@@ -46,19 +46,10 @@ export default function WorkerApp({ user }: WorkerAppProps) {
 
   const fetchWorkerTasks = async () => {
     try {
-      const res = await axios.get(`http://localhost:8085/api/v1/worker/tasks/my/${user.email || 'operator@apex.com'}`, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
-      setTasks(res.data);
+      const res = await api.get(`/worker/tasks/my/${user.email || 'operator@apex.com'}`);
+      setTasks(res.data || []);
     } catch (err) {
-      // Mock seeder
-      setTasks([
-        { id: 1, orderId: 'ord-1', orderNumber: 'ORD-2026-101', productName: 'Premium Dri-FIT Running Tops', stageId: 's-2', stageName: 'Stitching & Cuffs', status: 'ASSIGNED', remarks: 'Standard run cuffs spec', safetyStock: 0 },
-        { id: 2, orderId: 'ord-2', orderNumber: 'ORD-2026-102', productName: 'Eco Cotton Summer Polos', stageId: 's-2', stageName: 'Stitching & Cuffs', status: 'PENDING', remarks: 'High thread density stitching', safetyStock: 0 }
-      ]);
+      console.error('Failed to fetch worker tasks from database:', err);
     }
   };
 
@@ -68,44 +59,30 @@ export default function WorkerApp({ user }: WorkerAppProps) {
 
   const handleStartTask = async (task: any) => {
     try {
-      const res = await axios.post(`http://localhost:8085/api/v1/worker/tasks/${task.id}/start`, {
+      const res = await api.post(`/worker/tasks/${task.id}/start`, {
         operatorName: user.fullName
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
       setStatusMsg('Job started. Timer is active.');
       setSelectedTask(res.data);
       fetchWorkerTasks();
     } catch (err) {
-      const updated = { ...task, status: 'IN_PROGRESS', startTime: new Date().toISOString() };
-      setSelectedTask(updated);
-      setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
-      setStatusMsg('Job started. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to start task in database.');
     }
     setTimeout(() => setStatusMsg(''), 3000);
   };
 
   const handlePauseTask = async (task: any) => {
     try {
-      const res = await axios.post(`http://localhost:8085/api/v1/worker/tasks/${task.id}/pause`, {
+      const res = await api.post(`/worker/tasks/${task.id}/pause`, {
         operatorName: user.fullName
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
       setStatusMsg('Job paused.');
       setSelectedTask(res.data);
       fetchWorkerTasks();
     } catch (err) {
-      const updated = { ...task, status: 'PAUSED' };
-      setSelectedTask(updated);
-      setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
-      setStatusMsg('Job paused. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to pause task in database.');
     }
     setTimeout(() => setStatusMsg(''), 3000);
   };
@@ -114,19 +91,16 @@ export default function WorkerApp({ user }: WorkerAppProps) {
     if (!selectedTask) return;
 
     try {
-      await axios.post(`http://localhost:8085/api/v1/worker/tasks/${selectedTask.id}/complete`, {
+      await api.post(`/worker/tasks/${selectedTask.id}/complete`, {
         remarks: remarks || 'Checked and validated.',
         photoUrl: photoUrl || 'https://images.unsplash.com/photo-1558449028-b53a39d105fc',
         operatorName: user.fullName
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
       setStatusMsg('Job complete! Order moved automatically to next queue.');
+      fetchWorkerTasks();
     } catch (err) {
-      setStatusMsg('Job complete! Order queue updated. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to complete task in database.');
     }
 
     setTasks(prev => prev.filter(t => t.id !== selectedTask.id));
@@ -146,24 +120,18 @@ export default function WorkerApp({ user }: WorkerAppProps) {
     if (!selectedTask) return;
 
     try {
-      await axios.post(`http://localhost:8085/api/v1/worker/tasks/${selectedTask.id}/report-issue`, {
+      await api.post(`/worker/tasks/${selectedTask.id}/report-issue`, {
         issueType,
         remarks: issueRemarks,
         operatorName: user.fullName
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
       setStatusMsg('Floor issue logged to Department Manager.');
+      fetchWorkerTasks();
     } catch (err) {
-      setStatusMsg('Floor issue logged. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to log issue to database.');
     }
 
-    const updated = { ...selectedTask, status: 'BLOCKED', remarks: `Blocked: ${issueType}. detail: ${issueRemarks}` };
-    setSelectedTask(updated);
-    setTasks(prev => prev.map(t => t.id === selectedTask.id ? updated : t));
     setShowIssueModal(false);
     setIssueRemarks('');
     setTimeout(() => setStatusMsg(''), 4050);

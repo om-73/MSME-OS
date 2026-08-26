@@ -20,6 +20,8 @@ public class WorkerTaskService {
     private final WorkflowEngineService workflowEngineService;
     private final NotificationService notificationService;
     private final DispatchRecordRepository dispatchRecordRepository;
+    private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryMovementRepository inventoryMovementRepository;
 
     public WorkerTaskService(WorkerTaskRepository workerTaskRepository,
                              ProductionAuditLogRepository auditLogRepository,
@@ -28,7 +30,9 @@ public class WorkerTaskService {
                              WorkflowEdgeRepository edgeRepository,
                              WorkflowEngineService workflowEngineService,
                              NotificationService notificationService,
-                             DispatchRecordRepository dispatchRecordRepository) {
+                             DispatchRecordRepository dispatchRecordRepository,
+                             InventoryItemRepository inventoryItemRepository,
+                             InventoryMovementRepository inventoryMovementRepository) {
         this.workerTaskRepository = workerTaskRepository;
         this.auditLogRepository = auditLogRepository;
         this.orderRepository = orderRepository;
@@ -37,6 +41,8 @@ public class WorkerTaskService {
         this.workflowEngineService = workflowEngineService;
         this.notificationService = notificationService;
         this.dispatchRecordRepository = dispatchRecordRepository;
+        this.inventoryItemRepository = inventoryItemRepository;
+        this.inventoryMovementRepository = inventoryMovementRepository;
     }
 
     public List<WorkerTask> getAllTasks() {
@@ -75,12 +81,13 @@ public class WorkerTaskService {
                 .build());
 
         // Notify worker
-        notificationService.createNotification(
+        notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                NotificationCategory.DELAY,
                 "Task Assigned",
                 "New task assigned for " + task.getProductName() + " (Stage: " + task.getStageName() + ")",
-                "notice",
+                task.getOrderId(),
                 task.getOrderNumber()
-        );
+        ));
 
         return task;
     }
@@ -151,7 +158,7 @@ public class WorkerTaskService {
         task.setEndTime(LocalDateTime.now());
         task.setRemarks(remarks);
         task.setPhotoUrl(photoUrl);
-        task = workerTaskRepository.save(task);
+        workerTaskRepository.save(task);
 
         // Audit Log
         auditLogRepository.save(ProductionAuditLog.builder()
@@ -167,6 +174,28 @@ public class WorkerTaskService {
                 .device("Worker App Mobile")
                 .timestamp(LocalDateTime.now())
                 .build());
+
+        // Automatic material consumption logic
+        List<InventoryItem> rawMaterials = inventoryItemRepository.findByTenantId(tenantId);
+        if (!rawMaterials.isEmpty()) {
+            InventoryItem itemToDeduct = rawMaterials.get(0);
+            double qtyToConsume = Math.min(itemToDeduct.getCurrentStock(), 5.0);
+            if (qtyToConsume > 0) {
+                itemToDeduct.setCurrentStock(itemToDeduct.getCurrentStock() - qtyToConsume);
+                inventoryItemRepository.save(itemToDeduct);
+
+                inventoryMovementRepository.save(InventoryMovement.builder()
+                        .tenantId(tenantId)
+                        .inventoryItemId(itemToDeduct.getId())
+                        .movementType("CONSUME")
+                        .quantity(qtyToConsume)
+                        .fromWarehouse(itemToDeduct.getWarehouseName())
+                        .orderId(task.getOrderId())
+                        .operatorName(operatorName)
+                        .remarks("Automated operational consumption on stage " + task.getStageName())
+                        .build());
+            }
+        }
 
         // Automatic stage movement logic
         ProductionOrder order = orderRepository.findById(task.getOrderId())
@@ -206,12 +235,13 @@ public class WorkerTaskService {
                     workerTaskRepository.save(nextTask);
 
                     // Alert notification
-                    notificationService.createNotification(
+                    notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                            NotificationCategory.DELAY,
                             "Next Stage Queue Ready",
                             "Batch " + order.getOrderNumber() + " moved to " + nextStage.getName(),
-                            "notice",
+                            order.getId(),
                             order.getOrderNumber()
-                    );
+                    ));
                 }
             } else {
                 // No outgoing edges means it reached the final stage (Packing/Dispatch)
@@ -230,12 +260,13 @@ public class WorkerTaskService {
                         .build();
                 dispatchRecordRepository.save(dispatch);
 
-                notificationService.createNotification(
+                notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                        NotificationCategory.DISPATCH,
                         "Order Completed & Ready for Dispatch",
                         "Order " + order.getOrderNumber() + " completed production. Added to dispatch waybills.",
-                        "notice",
+                        order.getId(),
                         order.getOrderNumber()
-                );
+                ));
               
                 // Terminate active workflow sequence
                 Optional<ProductionWorkflow> pwOpt = orderRepository.findById(order.getId())
@@ -283,12 +314,13 @@ public class WorkerTaskService {
                 .build());
 
         // Send alert
-        notificationService.createNotification(
+        notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                NotificationCategory.QC_FAILURE,
                 "Production Blocked",
                 "Issue reported in " + task.getStageName() + " (" + issueType + "): " + remarks,
-                "warning",
+                task.getOrderId(),
                 task.getOrderNumber()
-        );
+        ));
 
         return task;
     }
@@ -350,11 +382,12 @@ public class WorkerTaskService {
                 .build());
 
         // Notify department
-        notificationService.createNotification(
+        notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                NotificationCategory.QC_FAILURE,
                 "Rework Ordered",
                 "Batch " + order.getOrderNumber() + " returned to " + targetStage.getName() + " for correction.",
-                "warning",
+                order.getId(),
                 order.getOrderNumber()
-        );
+        ));
     }
 }

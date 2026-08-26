@@ -5,179 +5,83 @@ import Dashboard from './views/Dashboard';
 import WorkflowBuilder from './views/WorkflowBuilder';
 import KanbanBoard from './views/KanbanBoard';
 import BrandPortal from './views/BrandPortal';
-import Notifications from './views/Notifications';
+import NotificationCenter from './views/NotificationCenter';
 import InventoryDashboard from './views/InventoryDashboard';
 import InventoryLedger from './views/InventoryLedger';
 import InventoryAuditManager from './views/InventoryAuditManager';
 import WorkerApp from './views/WorkerApp';
 import DispatchDashboard from './views/DispatchDashboard';
-import axios from 'axios';
+import ProcurementDashboard from './views/ProcurementDashboard';
+import WarehouseManager from './views/WarehouseManager';
+import BrandMaterialManager from './views/BrandMaterialManager';
+import AnalyticsDashboard from './views/AnalyticsDashboard';
+import TenantBillingDashboard from './views/TenantBillingDashboard';
+import SaaSAdminDashboard from './views/SaaSAdminDashboard';
+import EnterpriseIntelligenceCenter from './views/EnterpriseIntelligenceCenter';
+import EnterpriseIntegrationConsole from './views/EnterpriseIntegrationConsole';
+import EnterpriseSecurityConsole from './views/EnterpriseSecurityConsole';
+import MobileWorkerAppConsole from './views/MobileWorkerAppConsole';
+import EnterpriseDocumentConsole from './views/EnterpriseDocumentConsole';
+import EnterpriseIoTConsole from './views/EnterpriseIoTConsole';
+import EnterpriseClientPortalConsole from './views/EnterpriseClientPortalConsole';
+import { api } from './api/client';
 
 export default function App() {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<any | null>(() => {
+    try {
+      const saved = localStorage.getItem('mfgos_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [currentTab, setCurrentTab] = useState('dashboard');
   
-  // App Wide Seed State (with fallback data seeder)
+  // Real Database State
   const [orders, setOrders] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [ledger, setLedger] = useState<any[]>([]);
   const [audits, setAudits] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([
-    { id: 'nike-brand', name: 'Nike MSME Partner' },
-    { id: 'adidas-brand', name: 'Adidas Performance' }
-  ]);
-
-  // Seed fallback mock data instantly so the UI is immediately populated
-  const loadMockData = () => {
-    const mockStages = [
-      { id: '1', name: 'Order Received', code: 'ORDER_RECEIVED', type: 'START', colorHex: '#3B82F6', sequenceOrder: 1, estimatedSlaHours: 2 },
-      { id: '2', name: 'Fabric Cutting', code: 'CUTTING', type: 'NORMAL', colorHex: '#8B5CF6', sequenceOrder: 2, estimatedSlaHours: 12 },
-      { id: '3', name: 'Printing & Sublimation', code: 'PRINTING', type: 'NORMAL', colorHex: '#EC4899', sequenceOrder: 3, estimatedSlaHours: 24 },
-      { id: '4', name: 'Stitching & Assembly', code: 'ASSEMBLY', type: 'NORMAL', colorHex: '#F59E0B', sequenceOrder: 4, estimatedSlaHours: 36 },
-      { id: '5', name: 'Quality Check (QC Gate)', code: 'QC', type: 'QC', colorHex: '#10B981', sequenceOrder: 5, estimatedSlaHours: 6 },
-      { id: '6', name: 'Dispatch', code: 'DISPATCH', type: 'END', colorHex: '#64748B', sequenceOrder: 6, estimatedSlaHours: 2 }
-    ];
-
-    const mockOrders = [
-      {
-        id: '101',
-        orderNumber: 'ORD-2026-101',
-        brandId: 'nike-brand',
-        brandName: 'Nike MSME Partner',
-        productName: 'Dri-FIT Jerseys (Batch A)',
-        quantity: 1200,
-        priority: 'HIGH',
-        status: 'IN_PROGRESS',
-        currentStageId: '4',
-        currentStageName: 'Stitching & Assembly',
-        currentStageSequence: 4,
-        totalContractValue: 38500.0,
-        paymentStatus: 'PARTIAL',
-        historyLogs: [],
-        qcRecords: []
-      },
-      {
-        id: '102',
-        orderNumber: 'ORD-2026-102',
-        brandId: 'nike-brand',
-        brandName: 'Nike MSME Partner',
-        productName: 'Pro Combat Compression Shorts',
-        quantity: 850,
-        priority: 'MEDIUM',
-        status: 'IN_PROGRESS',
-        currentStageId: '5',
-        currentStageName: 'Quality Check (QC Gate)',
-        currentStageSequence: 5,
-        totalContractValue: 24200.0,
-        paymentStatus: 'PAID',
-        historyLogs: [],
-        qcRecords: []
-      },
-      {
-        id: '103',
-        orderNumber: 'ORD-2026-103',
-        brandId: 'adidas-brand',
-        brandName: 'Adidas Performance',
-        productName: 'Primegreen Performance Hoodies',
-        quantity: 500,
-        priority: 'HIGH',
-        status: 'BLOCKED',
-        currentStageId: '3',
-        currentStageName: 'Printing & Sublimation',
-        currentStageSequence: 3,
-        totalContractValue: 31000.0,
-        paymentStatus: 'PARTIAL',
-        historyLogs: [],
-        qcRecords: []
-      }
-    ];
-
-    const mockNotifications = [
-      {
-        id: 'n1',
-        category: 'MATERIAL_SHORTAGE',
-        title: 'Cyan printing ink running low',
-        message: 'Sublimation printing ink (Cyan #402) is running low for order ORD-2026-103. Stock remaining: 1.2 kg.',
-        orderNumber: 'ORD-2026-103',
-        readStatus: false
-      },
-      {
-        id: 'n2',
-        category: 'QC_FAILURE',
-        title: 'QC Flag: Printing Defect Detected',
-        message: 'Order ORD-2026-103 failed QC check due to Ink Smudge & Color Bleed. Order moved to BLOCKED state.',
-        orderNumber: 'ORD-2026-103',
-        readStatus: false
-      }
-    ];
-
-    const mockInventory = [
-      { id: '1', name: 'Dry-FIT Polyester Fabric (Roll)', code: 'RM-POLY-01', sku: 'SKU-RM-POLY-01', barcode: 'BC-9921441', category: 'RAW_MATERIAL', supplierName: 'Apex Mills Corp', unit: 'meters', purchasePrice: 8.50, currentStock: 800.0, reservedStock: 100.0, availableStock: 700.0, warehouseName: 'Main Raw Warehouse', rackLocation: 'Rack A-3', batchNumber: 'B-99214', safetyStock: 100.0, minStockAlert: 50.0, maxStockAlert: 2000.0, isLowStock: false },
-      { id: '2', name: 'Sublimation Cyan Ink (kg)', code: 'RM-CYAN-INK', sku: 'SKU-RM-CYAN-INK', barcode: 'BC-882104', category: 'RAW_MATERIAL', supplierName: 'DyeTech Solutions', unit: 'kg', purchasePrice: 45.00, currentStock: 5.5, reservedStock: 0.0, availableStock: 5.5, warehouseName: 'Chemical Store Room', rackLocation: 'Chemical Cabinet B', batchNumber: 'B-7721', safetyStock: 10.0, minStockAlert: 5.0, maxStockAlert: 50.0, isLowStock: true },
-      { id: '3', name: 'Nike Swoosh Branding Patches', code: 'CS-NIKE-PATCH', sku: 'SKU-CS-NIKE-PATCH', barcode: 'BC-1234567', category: 'CLIENT_SUPPLIED', supplierName: 'Nike Sourcing Division', unit: 'pcs', purchasePrice: 0.0, currentStock: 400.0, reservedStock: 0.0, availableStock: 400.0, warehouseName: 'Secured Trim Cage', rackLocation: 'Box C-12', clientBrandId: 'nike-brand', safetyStock: 50.0, minStockAlert: 10.0, maxStockAlert: 1000.0, isLowStock: false },
-      { id: '4', name: 'Shredded Polyester Trims (Scrap)', code: 'SC-POLY-TRIM', sku: 'SKU-SC-POLY-TRIM', barcode: 'BC-SCRAP-99', category: 'SCRAP', supplierName: 'Internal Scrap Generation', unit: 'kg', purchasePrice: 0.0, currentStock: 35.0, reservedStock: 0.0, availableStock: 35.0, warehouseName: 'Scrap Yard', rackLocation: 'Bin #4', safetyStock: 0.0, minStockAlert: 0.0, maxStockAlert: 0.0, isLowStock: false }
-    ];
-
-    const mockLedger = [
-      { id: 'l1', inventoryItemId: '1', inventoryItemName: 'Dry-FIT Polyester Fabric (Roll)', inventoryItemCode: 'RM-POLY-01', movementType: 'RECEIVE', quantity: 800.0, toWarehouse: 'Main Raw Warehouse', operatorName: 'Ramesh Sharma', remarks: 'Initial inventory seeder intake', timestamp: new Date().toISOString() },
-      { id: 'l2', inventoryItemId: '2', inventoryItemName: 'Sublimation Cyan Ink (kg)', inventoryItemCode: 'RM-CYAN-INK', movementType: 'RECEIVE', quantity: 15.0, toWarehouse: 'Chemical Store Room', operatorName: 'Ramesh Sharma', remarks: 'Initial inventory seeder chemical intake', timestamp: new Date().toISOString() },
-      { id: 'l3', inventoryItemId: '2', inventoryItemName: 'Sublimation Cyan Ink (kg)', inventoryItemCode: 'RM-CYAN-INK', movementType: 'CONSUME', quantity: 9.5, fromWarehouse: 'Chemical Store Room', operatorName: 'Ramesh Sharma', remarks: 'Batch run ORD-2026-101 cyan printing run consumption', timestamp: new Date().toISOString() }
-    ];
-
-    const mockAudits = [
-      {
-        id: 'a1',
-        auditName: 'Q2 Raw Materials Audit',
-        status: 'COMPLETED',
-        createdBy: 'Ramesh Sharma',
-        createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-        completedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000 + 4 * 3600 * 1000).toISOString(),
-        items: [
-          { id: 'ai1', inventoryItemId: '1', inventoryItemName: 'Dry-FIT Polyester Fabric (Roll)', inventoryItemCode: 'RM-POLY-01', systemStock: 800.0, physicalStock: 800.0, variance: 0.0, reconciled: true }
-        ]
-      }
-    ];
-
-    setStages(mockStages);
-    setOrders(mockOrders);
-    setNotifications(mockNotifications);
-    setInventory(mockInventory);
-    setLedger(mockLedger);
-    setAudits(mockAudits);
-  };
+  const [brands, setBrands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const loadDataFromBackend = async () => {
+    if (!user) return;
+    setLoading(true);
     try {
-      const authHeader = {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      };
-
-      const [ordersRes, workflowRes, notifRes, invRes, ledgerRes, auditRes] = await Promise.all([
-        axios.get('http://localhost:8085/api/v1/orders', authHeader),
-        axios.get('http://localhost:8085/api/v1/workflows/default', authHeader),
-        axios.get('http://localhost:8085/api/v1/notifications', authHeader),
-        axios.get('http://localhost:8085/api/v1/inventory', authHeader),
-        axios.get('http://localhost:8085/api/v1/inventory/ledger', authHeader),
-        axios.get('http://localhost:8085/api/v1/inventory/audit', authHeader)
+      const [ordersRes, workflowRes, notifRes, invRes, ledgerRes, auditRes] = await Promise.allSettled([
+        api.get('/orders'),
+        api.get('/workflows/default'),
+        api.get('/notifications'),
+        api.get('/inventory'),
+        api.get('/inventory/ledger'),
+        api.get('/inventory/audit')
       ]);
 
-      setOrders(ordersRes.data);
-      if (workflowRes.data && workflowRes.data.stages) {
-        setStages(workflowRes.data.stages);
+      if (ordersRes.status === 'fulfilled') {
+        setOrders(ordersRes.value.data || []);
       }
-      setNotifications(notifRes.data);
-      setInventory(invRes.data);
-      setLedger(ledgerRes.data);
-      setAudits(auditRes.data);
+      if (workflowRes.status === 'fulfilled' && workflowRes.value.data?.stages) {
+        setStages(workflowRes.value.data.stages || []);
+      }
+      if (notifRes.status === 'fulfilled') {
+        setNotifications(notifRes.value.data || []);
+      }
+      if (invRes.status === 'fulfilled') {
+        setInventory(invRes.value.data || []);
+      }
+      if (ledgerRes.status === 'fulfilled') {
+        setLedger(ledgerRes.value.data || []);
+      }
+      if (auditRes.status === 'fulfilled') {
+        setAudits(auditRes.value.data || []);
+      }
     } catch (err) {
-      // Backend offline or booting fallback silently
-      console.warn('Backend server offline. MfgOS running in offline mock seeder mode.');
-      loadMockData();
+      console.error('Failed to load database records from backend:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -197,89 +101,67 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('mfgos_user');
     setUser(null);
+    setOrders([]);
+    setStages([]);
+    setNotifications([]);
+    setInventory([]);
+    setLedger([]);
+    setAudits([]);
   };
 
-  // Callback triggers
+  // Notification Actions
   const handleMarkNotificationRead = async (id: string) => {
     try {
-      await axios.patch(`http://localhost:8085/api/v1/notifications/${id}/read`, {}, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
+      await api.patch(`/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, readStatus: true } : n));
     } catch (err) {
-      console.warn(err);
+      console.error('Failed to mark notification read:', err);
     }
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, readStatus: true } : n));
   };
 
   const handleMarkAllNotificationsRead = async () => {
     try {
-      await axios.post('http://localhost:8085/api/v1/notifications/read-all', {}, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
+      await api.post('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, readStatus: true })));
     } catch (err) {
-      console.warn(err);
+      console.error('Failed to mark all notifications read:', err);
     }
-    setNotifications(prev => prev.map(n => ({ ...n, readStatus: true })));
   };
 
   const handleTriggerSimulatedEvent = async (category: string) => {
     let title = 'System Alert';
     let message = 'An operational alert has been logged.';
-    let orderNumber = 'ORD-2026-101';
+    let orderNumber = orders[0]?.orderNumber || 'ORD-2026-101';
 
     if (category === 'MATERIAL_SHORTAGE') {
-      title = 'Material Shortage: Timber Stock Low';
-      message = 'Oak wood lumber logs are running low for carpentry production ORD-2026-104. Stock remaining: 3 items.';
-      orderNumber = 'ORD-2026-104';
+      title = 'Material Shortage Alert';
+      message = 'Low raw material threshold reached for active production run.';
     } else if (category === 'QC_FAILURE') {
-      title = 'QC Flag: Dimensional Tolerance Check Failed';
-      message = 'Order ORD-2026-102 failed QC check due to Stitching misalignment. Moved to BLOCKED for rework.';
-      orderNumber = 'ORD-2026-102';
-      // Block order 102
-      setOrders(prev => prev.map(o => o.id === '102' ? { ...o, status: 'BLOCKED' } : o));
+      title = 'QC Checkpoint Flag';
+      message = 'Order moved to BLOCKED state for rework inspection.';
     } else if (category === 'DELAY') {
-      title = 'SLA SLA Warning: Printing bottleneck';
-      message = 'High print backlog at sublimation unit causing stage queues to backlog by 6+ hours.';
-      orderNumber = 'ORD-2026-101';
+      title = 'SLA Bottleneck Alert';
+      message = 'Floor cycle duration exceedance warning.';
     } else if (category === 'DISPATCH') {
-      title = 'Order dispatched via DHL Express';
-      message = 'Order ORD-2026-101 handed over to logistics carrier. Waybill: DHL-88210-IN.';
-      orderNumber = 'ORD-2026-101';
-      // Complete order 101
-      setOrders(prev => prev.map(o => o.id === '101' ? { ...o, status: 'DISPATCHED' } : o));
-    } else if (category === 'PAYMENT') {
-      title = 'Stripe Payment Settlement Settled';
-      message = 'Stripe payment advance of $15,000 cleared for order ORD-2026-101.';
-      orderNumber = 'ORD-2026-101';
+      title = 'Logistics Dispatch Cleared';
+      message = 'Consignment handed over to courier.';
     }
 
-    const newNotif = {
-      id: Math.random().toString(),
-      category,
-      title,
-      message,
-      orderNumber,
-      readStatus: false
-    };
-
-    setNotifications(prev => [newNotif, ...prev]);
-
     try {
-      await axios.post('http://localhost:8085/api/v1/notifications', newNotif, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
+      const res = await api.post('/notifications', {
+        category,
+        title,
+        message,
+        orderNumber,
+        readStatus: false
       });
+      if (res.data) {
+        setNotifications(prev => [res.data, ...prev]);
+      }
     } catch (err) {
-      console.warn(err);
+      console.error('Failed to publish notification to database:', err);
     }
   };
 
@@ -348,7 +230,7 @@ export default function App() {
 
             <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[10px] text-slate-600 font-bold uppercase tracking-wider">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Apex Textiles</span>
+              <span>{user.tenantName || 'Apex Apparel & Textiles'}</span>
             </div>
           </div>
         </header>
@@ -360,6 +242,36 @@ export default function App() {
               orders={orders} 
               onTriggerShortage={() => handleTriggerSimulatedEvent('MATERIAL_SHORTAGE')} 
             />
+          )}
+          {currentTab === 'client-portal' && (
+            <EnterpriseClientPortalConsole user={user} />
+          )}
+          {currentTab === 'machines-iot' && (
+            <EnterpriseIoTConsole user={user} />
+          )}
+          {currentTab === 'documents' && (
+            <EnterpriseDocumentConsole user={user} />
+          )}
+          {currentTab === 'mobile-app' && (
+            <MobileWorkerAppConsole user={user} />
+          )}
+          {currentTab === 'security' && (
+            <EnterpriseSecurityConsole user={user} />
+          )}
+          {currentTab === 'integrations' && (
+            <EnterpriseIntegrationConsole user={user} />
+          )}
+          {currentTab === 'ai-intelligence' && (
+            <EnterpriseIntelligenceCenter user={user} />
+          )}
+          {currentTab === 'tenant-billing' && (
+            <TenantBillingDashboard user={user} />
+          )}
+          {currentTab === 'saas-admin' && (
+            <SaaSAdminDashboard />
+          )}
+          {currentTab === 'analytics' && (
+            <AnalyticsDashboard />
           )}
           {currentTab === 'builder' && <WorkflowBuilder />}
           {currentTab === 'kanban' && (
@@ -376,6 +288,24 @@ export default function App() {
           )}
           {currentTab === 'dispatch' && (
             <DispatchDashboard />
+          )}
+          {currentTab === 'procurement' && (
+            <ProcurementDashboard user={user} inventory={inventory} />
+          )}
+          {currentTab === 'warehouse' && (
+            <WarehouseManager 
+              inventory={inventory} 
+              onRefresh={loadDataFromBackend} 
+              onUpdateInventoryItem={handleUpdateInventoryItem}
+              onAddMovement={handleAddMovement}
+            />
+          )}
+          {currentTab === 'brand-materials' && (
+            <BrandMaterialManager 
+              inventory={inventory} 
+              onRefresh={loadDataFromBackend} 
+              onUpdateInventoryItem={handleUpdateInventoryItem}
+            />
           )}
           {currentTab === 'inventory-dashboard' && (
             <InventoryDashboard inventory={inventory} />
@@ -407,13 +337,8 @@ export default function App() {
               user={user} 
             />
           )}
-          {currentTab === 'notifications' && (
-            <Notifications 
-              notifications={notifications} 
-              onMarkRead={handleMarkNotificationRead}
-              onMarkAllRead={handleMarkAllNotificationsRead}
-              onTriggerEvent={handleTriggerSimulatedEvent}
-            />
+          {(currentTab === 'notifications' || currentTab === 'notification-center') && (
+            <NotificationCenter user={user} />
           )}
         </div>
       </div>

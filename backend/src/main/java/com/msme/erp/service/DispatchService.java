@@ -60,12 +60,13 @@ public class DispatchService {
         record = dispatchRecordRepository.save(record);
 
         // Notify client
-        notificationService.createNotification(
+        notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                com.msme.erp.domain.NotificationCategory.DISPATCH,
                 "Order Dispatched",
                 "Your shipment for order " + record.getOrderNumber() + " is transit via " + record.getCourierName() + " (Ref: " + record.getTrackingNumber() + ")",
-                "notice",
+                null,
                 record.getOrderNumber()
-        );
+        ));
 
         return record;
     }
@@ -80,12 +81,13 @@ public class DispatchService {
         record = dispatchRecordRepository.save(record);
 
         // Notify client
-        notificationService.createNotification(
+        notificationService.createNotification(new com.msme.erp.dto.CreateNotificationRequest(
+                com.msme.erp.domain.NotificationCategory.DISPATCH,
                 "Order Delivered",
                 "Waybill " + record.getOrderNumber() + " has been successfully signed off at destination depot.",
-                "notice",
+                null,
                 record.getOrderNumber()
-        );
+        ));
 
         return record;
     }

@@ -10,7 +10,7 @@ import {
   Calendar,
   Sparkles
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../api/client';
 import { 
   Button, 
   Card, 
@@ -44,19 +44,10 @@ export default function DispatchDashboard() {
 
   const fetchDispatchQueue = async () => {
     try {
-      const res = await axios.get('http://localhost:8085/api/v1/dispatch', {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
-      setDispatchQueue(res.data);
+      const res = await api.get('/dispatch');
+      setDispatchQueue(res.data || []);
     } catch (err) {
-      // Mock seeder
-      setDispatchQueue([
-        { id: 1, orderId: 'ord-1', orderNumber: 'ORD-2026-101', productName: 'Premium Dri-FIT Running Tops', vehicleNo: 'KA-03-ME-9011', courierName: 'DHL Express Cargo', trackingNumber: 'DHL-890214-X', status: 'READY', checklistPassed: false, invoiceNumber: 'INV-2026-092', barcodeVerified: false, deliveryConfirmationTime: null },
-        { id: 2, orderId: 'ord-2', orderNumber: 'ORD-2026-102', productName: 'Eco Cotton Summer Polos', vehicleNo: null, courierName: null, trackingNumber: null, status: 'READY', checklistPassed: false, invoiceNumber: null, barcodeVerified: false, deliveryConfirmationTime: null }
-      ]);
+      console.error('Failed to fetch dispatch queue from database:', err);
     }
   };
 
@@ -69,23 +60,17 @@ export default function DispatchDashboard() {
     if (!selectedRecord) return;
 
     try {
-      const res = await axios.post(`http://localhost:8085/api/v1/dispatch/${selectedRecord.id}/courier`, {
+      await api.post(`/dispatch/${selectedRecord.id}/courier`, {
         vehicleNo,
         courierName,
         trackingNumber,
         invoiceNumber
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
       setStatusMsg('Courier waybill mapped successfully.');
       fetchDispatchQueue();
     } catch (err) {
-      const updated = { ...selectedRecord, vehicleNo, courierName, trackingNumber, invoiceNumber };
-      setDispatchQueue(prev => prev.map(d => d.id === selectedRecord.id ? updated : d));
-      setStatusMsg('Courier waybill mapped. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to map courier in database.');
     }
 
     setShowCourierModal(false);
@@ -98,21 +83,15 @@ export default function DispatchDashboard() {
     if (!selectedRecord) return;
 
     try {
-      const res = await axios.post(`http://localhost:8085/api/v1/dispatch/${selectedRecord.id}/verify`, {
+      await api.post(`/dispatch/${selectedRecord.id}/verify`, {
         checklistPassed,
         barcodeVerified
-      }, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
       });
       setStatusMsg('Checklist and barcode verified.');
       fetchDispatchQueue();
     } catch (err) {
-      const updated = { ...selectedRecord, checklistPassed, barcodeVerified };
-      setDispatchQueue(prev => prev.map(d => d.id === selectedRecord.id ? updated : d));
-      setStatusMsg('Checklist and barcode verified. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to verify dispatch checklist in database.');
     }
 
     setShowVerifyModal(false);
@@ -122,41 +101,24 @@ export default function DispatchDashboard() {
 
   const handleShip = async (record: any) => {
     try {
-      await axios.post(`http://localhost:8085/api/v1/dispatch/${record.id}/ship`, {}, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
+      await api.post(`/dispatch/${record.id}/ship`, {});
       setStatusMsg('Shipment dispatched. Client notification sent.');
       fetchDispatchQueue();
     } catch (err) {
-      if (!record.checklistPassed || !record.barcodeVerified) {
-        setStatusMsg('Cannot ship: checklist or barcode must be verified.');
-        setTimeout(() => setStatusMsg(''), 3500);
-        return;
-      }
-      const updated = { ...record, status: 'DISPATCHED' };
-      setDispatchQueue(prev => prev.map(d => d.id === record.id ? updated : d));
-      setStatusMsg('Shipment dispatched. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to dispatch shipment in database.');
     }
     setTimeout(() => setStatusMsg(''), 3000);
   };
 
   const handleDeliver = async (record: any) => {
     try {
-      await axios.post(`http://localhost:8085/api/v1/dispatch/${record.id}/deliver`, {}, {
-        headers: {
-          'Authorization': 'Bearer mock-jwt-token',
-          'X-Tenant-ID': 'apex-textiles-id'
-        }
-      });
+      await api.post(`/dispatch/${record.id}/deliver`, {});
       setStatusMsg('Shipment delivery confirmed by client signature.');
       fetchDispatchQueue();
     } catch (err) {
-      const updated = { ...record, status: 'DELIVERED', deliveryConfirmationTime: new Date().toISOString() };
-      setDispatchQueue(prev => prev.map(d => d.id === record.id ? updated : d));
-      setStatusMsg('Shipment delivered. (Mock)');
+      console.error(err);
+      setStatusMsg('Failed to confirm delivery in database.');
     }
     setTimeout(() => setStatusMsg(''), 3000);
   };

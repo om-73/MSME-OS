@@ -76,20 +76,54 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        if (tenantRepository.count() > 0) {
-            return;
+        Tenant tenant = tenantRepository.findByCompanyName("Apex Apparel & Textile Solutions")
+                .orElseGet(() -> tenantRepository.save(Tenant.builder()
+                        .companyName("Apex Apparel & Textile Solutions")
+                        .subdomain("apex-textiles")
+                        .industry("Apparel & Garment Manufacturing")
+                        .subscriptionTier("ENTERPRISE_MSME")
+                        .active(true)
+                        .build()));
+        String tenantId = tenant.getId();
+
+        String encodedPass = passwordEncoder.encode("password123");
+
+        if (userRepository.findByEmail("owner@apex.com").isEmpty()) {
+            userRepository.save(User.builder()
+                    .tenantId(tenantId)
+                    .email("owner@apex.com")
+                    .password(encodedPass)
+                    .fullName("Rajesh Kumar")
+                    .role(Role.ROLE_FACTORY_OWNER)
+                    .active(true)
+                    .build());
         }
 
-        // 1. Create Default Tenant
-        Tenant tenant = Tenant.builder()
-                .companyName("Apex Apparel & Textile Solutions")
-                .subdomain("apex-textiles")
-                .industry("Apparel & Garment Manufacturing")
-                .subscriptionTier("ENTERPRISE_MSME")
-                .active(true)
-                .build();
-        tenant = tenantRepository.save(tenant);
-        String tenantId = tenant.getId();
+        if (userRepository.findByEmail("operator@apex.com").isEmpty()) {
+            userRepository.save(User.builder()
+                    .tenantId(tenantId)
+                    .email("operator@apex.com")
+                    .password(encodedPass)
+                    .fullName("Ramesh Sharma")
+                    .role(Role.ROLE_OPERATOR)
+                    .active(true)
+                    .build());
+        }
+
+        if (userRepository.findByEmail("qc@apex.com").isEmpty()) {
+            userRepository.save(User.builder()
+                    .tenantId(tenantId)
+                    .email("qc@apex.com")
+                    .password(encodedPass)
+                    .fullName("Priya Verma")
+                    .role(Role.ROLE_QUALITY_INSPECTOR)
+                    .active(true)
+                    .build());
+        }
+
+        if (orderRepository.count() > 0) {
+            return;
+        }
 
         // 2. Create Departments
         Department cuttingDept = departmentRepository.save(new Department(null, tenantId, "Cutting Department", "CUTTING", false, null, null));
@@ -97,41 +131,6 @@ public class DataSeeder implements CommandLineRunner {
         Department assemblyDept = departmentRepository.save(new Department(null, tenantId, "Assembly & Stitching", "ASSEMBLY", false, null, null));
         Department qcDept = departmentRepository.save(new Department(null, tenantId, "Quality Control", "QC", false, null, null));
         Department dispatchDept = departmentRepository.save(new Department(null, tenantId, "Logistics & Dispatch", "DISPATCH", false, null, null));
-
-        // 3. Create Users
-        String encodedPass = passwordEncoder.encode("password123");
-
-        User owner = userRepository.save(User.builder()
-                .tenantId(tenantId)
-                .email("owner@apex.com")
-                .password(encodedPass)
-                .fullName("Rajesh Kumar")
-                .role(Role.ROLE_FACTORY_OWNER)
-                .active(true)
-                .build());
-
-        User operator = userRepository.save(User.builder()
-                .tenantId(tenantId)
-                .email("operator@apex.com")
-                .password(encodedPass)
-                .fullName("Ramesh Sharma")
-                .role(Role.ROLE_OPERATOR)
-                .active(true)
-                .build());
-
-        User qcInspector = userRepository.save(User.builder()
-                .tenantId(tenantId)
-                .email("qc@apex.com")
-                .password(encodedPass)
-                .fullName("Priya Verma")
-                .role(Role.ROLE_QUALITY_INSPECTOR)
-                .active(true)
-                .build());
-
-        // 4. Create Employee Assignments
-        employeeAssignmentRepository.save(new EmployeeAssignment(null, tenantId, operator.getId(), cuttingDept.getId(), null));
-        employeeAssignmentRepository.save(new EmployeeAssignment(null, tenantId, operator.getId(), assemblyDept.getId(), null));
-        employeeAssignmentRepository.save(new EmployeeAssignment(null, tenantId, qcInspector.getId(), qcDept.getId(), null));
 
         // 5. Create Brands
         Brand brandNike = brandRepository.save(Brand.builder()
