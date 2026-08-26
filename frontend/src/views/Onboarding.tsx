@@ -135,6 +135,37 @@ export default function Onboarding({ onLoginSuccess }: OnboardingProps) {
           <p className="text-xs text-slate-500 mt-1">Multi-Tenant PostgreSQL Connected Platform</p>
         </div>
 
+        {typeof window !== 'undefined' && window.location.protocol === 'https:' && customServerUrl.startsWith('http://localhost') && (
+          <div className="mb-5 p-3.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs">
+            <div className="flex items-center space-x-2 font-bold text-amber-900 mb-1.5">
+              <Server className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Connect Live Backend Server</span>
+            </div>
+            <p className="text-[11px] text-amber-800 mb-2 leading-relaxed">
+              Your app is live on HTTPS. Enter your backend URL (from Railway, Render, or Koyeb) to connect to PostgreSQL:
+            </p>
+            <form onSubmit={handleSaveServerUrl} className="flex space-x-1.5">
+              <input
+                type="text"
+                value={customServerUrl}
+                onChange={(e) => setCustomServerUrl(e.target.value)}
+                placeholder="https://msme-os.up.railway.app/api/v1"
+                className="flex-1 px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-xs text-slate-900 focus:outline-none"
+                required
+              />
+              <Button type="submit" variant="primary" className="px-3 py-1 text-xs shrink-0 font-bold bg-amber-600 hover:bg-amber-700 text-white">
+                Save & Connect
+              </Button>
+            </form>
+            {serverSavedMsg && (
+              <p className="text-[11px] text-emerald-700 font-bold mt-1.5 flex items-center space-x-1">
+                <Check className="w-3.5 h-3.5" />
+                <span>{serverSavedMsg}</span>
+              </p>
+            )}
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl">
             {error}
